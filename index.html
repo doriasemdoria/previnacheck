@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM V4.9 - SAPPHIRE EDITION</title>
+    <style>
+        :root {
+            --bg-dark: #050506;
+            --card-bg: #0d0d0f;
+            --accent-blue: #3b82f6;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --border-color: #1e1e22;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app-container { 
+            display: flex; width: 100%; max-width: 1500px; gap: 40px; 
+        }
+
+        .card {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 35px;
+            position: relative;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+
+        h2 { 
+            color: var(--accent-blue); text-transform: uppercase; 
+            letter-spacing: 2px; font-size: 1.2rem; margin: 0 0 30px 0;
+            border-left: 5px solid var(--accent-blue); padding-left: 15px;
+        }
+
+        label { color: var(--text-dim); margin-top: 20px; display: block; font-size: 0.75rem; text-transform: uppercase; }
+
+        input, select {
+            width: 100%; padding: 14px; margin-top: 8px;
+            background: #000; border: 1px solid var(--border-color); 
+            border-radius: 8px; color: #fff; outline: none;
+        }
+
+        input:focus { border-color: var(--accent-blue); }
+
+        .btn {
+            width: 100%; padding: 16px; margin-top: 15px; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 700; text-transform: uppercase; transition: 0.2s;
+        }
+
+        .btn-manual { background: transparent; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+        .btn-manual:hover { background: rgba(59, 130, 246, 0.1); }
+        
+        .btn-add { background: var(--accent-blue); color: #fff; }
+        .btn-add:hover { background: #2563eb; transform: translateY(-1px); }
+
+        .btn-copy { background: #fff; color: #000; margin-top: auto; }
+
+        #preview {
+            flex-grow: 1; background: #000; border: 1px solid var(--border-color);
+            padding: 20px; margin-top: 15px; border-radius: 8px; 
+            font-family: 'JetBrains Mono', 'Courier New', monospace; color: #cbd5e1; 
+            white-space: pre-wrap; overflow-y: auto; max-height: 500px;
+        }
+
+        .sugestoes-box {
+            background: #0a0a0c; border: 1px solid var(--accent-blue); 
+            max-height: 250px; overflow-y: auto; position: absolute; 
+            width: calc(100% - 2px); z-index: 99; border-radius: 0 0 8px 8px;
+        }
+        .sugestao-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #1a1a1e; }
+        .sugestao-item:hover { background: var(--accent-blue); color: #fff; }
+
+        #notificacao {
+            position: fixed; bottom: 30px; right: 30px; background: var(--accent-blue); 
+            color: #fff; padding: 15px 30px; border-radius: 10px; display: none; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="notificacao"></div>
+
+<div class="app-container">
+    <div class="card">
+        <h2>📂 DATABASE</h2>
+        
+        <label>Cadastro Manual</label>
+        <input type="text" id="cad-nome" placeholder="NOME + CRM">
+        <button class="btn btn-manual" onclick="salvarManual()">💾 Salvar no Banco</button>
+
+        <hr style="border-color:#1e1e22; margin:30px 0;">
+
+        <label>Status</label>
+        <select id="tipo">
+            <option value="CHECK-IN">✅ CHECK-IN</option>
+            <option value="CHECK-OUT">👋 CHECK-OUT</option>
+        </select>
+
+        <label>Unidade / Setor</label>
+        <select id="unidade" onchange="atualizarSetores()">
+            <option value="TAIPAS">TAIPAS</option>
+            <option value="FRANCO DA ROCHA">FRANCO DA ROCHA</option>
+        </select>
+        <select id="setor" style="margin-top: 10px;"></select>
+
+        <label>Busca de Profissional</label>
+        <div style="position: relative;">
+            <input type="text" id="busca-medico" placeholder="Pesquisar..." oninput="filtrarMedicos()">
+            <div id="sugestoes" class="sugestoes-box" style="display:none;"></div>
+        </div>
+
+        <label>Horário</label>
+        <input type="time" id="horario">
+        <button class="btn btn-add" onclick="adicionarAoRelatorio()">🚀 Lançar no Monitor</button>
+    </div>
+
+    <div class="card">
+        <h2>📊 MONITOR</h2>
+        <div id="preview">Aguardando registros..._</div>
+        <button class="btn btn-copy" onclick="copiar()">📋 Copiar Protocolo</button>
+    </div>
+</div>
+
+<script>
+    // LISTA COMPLETA DO SEU ARQUIVO ASDA.TXT (PROCESSADA)
+    let medicosSalvos = ["Lorrana Rocha Lima Rodrigues 280068-SP", "Isadora Matos Rocha 269232-SP", "Johnny Hilario Dos Santos 235239-SP", "Bruna Izabel Araujo Ribeiro 269852-SP", "Eric Euclides Salvador Feijao 135969-SP", "Ricardo Kadri Monteiro 78936-SP", "Marcelo Ienne 91808-SP", "Isabel Bittencourt De Almeida Pedrosa 265424-SP", "Camila Baggio Sartor 270965-SP", "Isadora Ventura Balhester 240024-SP", "Marcus Vinicius Assad Medeiros 181845-SP", "Matheus De Paula Medeiros 258035-SP", "Aures Martins Correia Junior 272718-SP", "Alexandre Bustios Zaballa 238120-SP", "Pedro Teixeira Meireles 242461-SP", "Jessica Perez Dorado 223345-SP", "Felipe De Araujo Oliveira 283534-SP", "Gabriela Bueno De Souza 278218-SP", "Roberto Caetano De Araujo 260056-SP", "Amanda Cristina Lopes Brathwaite 281932-SP", "Reuel Thome Silva 277609-SP", "Renato Claros Lima 235053-SP", "Thomas Dodie Abauat 262830-SP", "Sergio Luiz Machado Nascimento 230231-SP", "Suellen Rodrigues Santos Ichitani 266288-SP", "Andressa Barros Tenorio Nunes De Carvalho 266345-SP", "Simon Enrique Prudencio Torrez 189136-SP", "Tuany Martinez Gonzalez 268081-SP", "Felipe Damasceno Alves Pereira 269437-SP", "Lyanderson Andrade Arruda 256745-SP", "Gustavo Batista Maia 277858-SP", "Lidiana Regia Costa Vieira Caetano 260692-SP", "Thiago Santos Rocha 281835-SP", "Maria Alice Eiras Gallotti Falcao 266154-SP", "Kleyton Roberto De Oliveira 266359-SP", "Hassan Amin El Zein 185108-SP", "Leonidas Augusto David Miranda 258026-SP", "Maria Simone Portilho Costa 9120-TO", "Ana Carolina Lopes De Castro Gomes 279289-SP", "Eduardo Ramires Cunha 240306-SP", "Stefani Soraya Prado Mendoza 279196-SP", "Renan Da Silva Bentes 230748-SP", "Juan Bautista Meza Sanchez 86683-SP", "Marcos Alexandre Sobral 174353-SP", "Carolina Nascimento Ferreira De Morais Stefani 229718-SP", "Ricardo Augusto Cavalcanti Braz 17505-PB", "Paulo Vigga Alves E Silva 277565-SP", "Eduardo Diego Ribeiro 270052-SP", "Jose Eduardo Vassallo Rodrigues 81464-SP", "Lorenzo Wiest E Vieira De Lemos 261335-SP", "Gabriel Furtado Immich 244420-SP", "Lucas Emanuel Barbosa Marinho 270386-SP", "Andre Augusto De Sousa Guedes 150041-SP", "Juliano Marcon 107312-SP", "Flavia Regina De Carvalho 137494-SP", "Isabella Marchesini De Andrade 278252-SP", "Lucas Augusto Ferreira De Oliveira 269399-SP", "Maria Eduarda De Oliveira Alcantara 274384-SP", "Matheus Felipe Mendes 269800-SP", "Gabriela Cristina Lima Cruz 278219-SP", "Leticia Lazzarin De Albuquerque 279375-SP", "Maria Eduarda Martins De Paiva Souza 260838-SP", "Arthur Aranda Cavalcanti Ferreira 238321-SP", "Pedro Henrique Santos Sampaio 256801-SP", "Livia Maria Goncalves Rodrigues 270921-SP", "Gabriel Ramos De Azevedo 271512-SP", "Lucas Marini Machado 279383-SP", "Daniel De Castro Aranha 123617-SP", "Sandro Galeti 131920-SP", "Gustavo Henrique De Castro Santos 279344-SP", "Luma Costa Oliveira 262331-SP", "Evellyn Nayara Gadelha De Queiroz 263155-SP", "Lucas Oliveira Santos 279384-SP", "Lara Milhomens De Oliveira 255476-SP", "Ana Leticia De Lima 278065-SP", "Jessica Gadioli 269477-SP", "Jose Luis Ortiz Vaca 119934-SP", "Julia Lima Guimaraes 278263-SP", "Felipe Henrique De Castro Santos 279326-SP", "Luis Antonio Gomes De Oliveira 266474-SP", "Maria Jose Arano Vargas 132470-SP", "Gabriel De Freitas Morais 279328-SP", "Rafael Henrique Ferreira De Carvalho 255279-SP", "Lucas Gabriel Chagas De Oliveira 255260-SP", "Mariane De Almeida Lima 260906-SP", "Carlos Andre De Castro Lima Junior 281643-SP", "Maria Lucia Santos 219194-SP", "Rodrigo Da Cunha Ramos 271700-SP", "Juliana Aranda Rocha Ferreira 123164-SP", "Daniel Araujo Da Cunha 135436-SP", "Matheus Fernandes Pinheiro 236892-SP", "Gabriel Henrique Rodrigues Pinheiro 266258-SP", "Felipe Dos Santos Souza 277028-SP", "Vanessa De Fatima Martins Ferreira 220092-SP", "Lethicia Ribeiro De Carvalho 277864-SP", "Rafael Henrique De Sousa Guedes 280091-SP", "Roberio Bezerra Lima 189135-SP", "Tayane Karoline Santos Nakamura 153913-SP", "Alessandra Lika Bacelar Horita 264494-SP", "Filipe Borges Brandao Pinheiro 261144-SP", "Rebeca Zanobia Fioramonte 218719-SP", "Caroline Vallini Costa 279842-SP", "Camila De Brito Branquim 271973-SP", "Michelle Yumi Ishida Rodrigues 281597-SP", "Eduardo Alexander Hernandez Ajete 268157-SP", "Alexander Labanino Jimenez 182574-SP", "Abraham Ticona Muriel 149543-SP", "Jonatan Isaac Mollo Jimenez 282962-SP", "Victor Rocha Dias 247941-SP", "Renan Sorrentino Cabral Batista 240709-SP", "Milena Almeida Pinheiro 265676-SP", "Luana Adelina Rosa Miranda 257603-SP", "Henrique Monteiro Barbosa 278858-SP", "Jessica De Lima Ewald 233058-SP", "Bruno Bernabe Lubraico 220441-SP", "Matheus Oliveira Cardoso Dos Santos 207330-SP", "Ana Paula Abate 85848-SP", "Fernanda Mussi Gregorio 199448-SP"];
+
+    const setoresPorUnidade = { 
+        "TAIPAS": ["Pronto Socorro Infantil"], 
+        "FRANCO DA ROCHA": ["Enfermaria", "Pronto Socorro Infantil", "UTI Neonatal", "UTI Pediátrica"] 
+    };
+    
+    let relatorio = {};
+
+    // Carregar cadastros manuais do navegador
+    const manuais = JSON.parse(localStorage.getItem('sapphire_manuais')) || [];
+    medicosSalvos = [...new Set([...medicosSalvos, ...manuais])];
+
+    function notify(msg) {
+        const n = document.getElementById('notificacao');
+        n.innerText = msg; n.style.display = 'block';
+        setTimeout(() => n.style.display = 'none', 2000);
+    }
+
+    function salvarManual() {
+        const nome = document.getElementById('cad-nome').value.trim();
+        if(nome && !medicosSalvos.includes(nome)) {
+            medicosSalvos.push(nome);
+            manuais.push(nome);
+            localStorage.setItem('sapphire_manuais', JSON.stringify(manuais));
+            document.getElementById('cad-nome').value = "";
+            notify("✅ Médico salvo com sucesso!");
+        }
+    }
+
+    function filtrarMedicos() {
+        const termo = document.getElementById('busca-medico').value.toLowerCase();
+        const divSug = document.getElementById('sugestoes');
+        if (termo.length < 2) { divSug.style.display = 'none'; return; }
+        
+        const filtrados = medicosSalvos.filter(m => m.toLowerCase().includes(termo)).slice(0, 15);
+        
+        if (filtrados.length > 0) {
+            divSug.innerHTML = filtrados.map(m => `<div class="sugestao-item" onclick="selecionar('${m}')">${m}</div>`).join('');
+            divSug.style.display = 'block';
+        } else { divSug.style.display = 'none'; }
+    }
+
+    function selecionar(nome) {
+        document.getElementById('busca-medico').value = nome;
+        document.getElementById('sugestoes').style.display = 'none';
+    }
+
+    function adicionarAoRelatorio() {
+        const tipo = document.getElementById('tipo').value;
+        const unidade = document.getElementById('unidade').value;
+        const setor = document.getElementById('setor').value;
+        const medico = document.getElementById('busca-medico').value;
+        const hora = document.getElementById('horario').value;
+
+        if(!medico) return notify("❌ Erro: Selecione um médico!");
+
+        if (!relatorio[tipo]) relatorio[tipo] = {};
+        if (!relatorio[tipo][unidade]) relatorio[tipo][unidade] = {};
+        if (!relatorio[tipo][unidade][setor]) relatorio[tipo][unidade][setor] = [];
+
+        relatorio[tipo][unidade][setor].push(`${medico} - ${hora}`);
+        atualizarPreview();
+        document.getElementById('busca-medico').value = '';
+        notify("🚀 Lançado no monitor!");
+    }
+
+    function atualizarPreview() {
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        let txt = "";
+        for (let t in relatorio) {
+            const emoji = t === "CHECK-IN" ? "✅" : "👋";
+            txt += `${emoji} *${t}s ${hoje}*\n\n`;
+            for (let u in relatorio[t]) {
+                txt += `🏥 \`UNIDADE ${u}\` \n\n`;
+                for (let s in relatorio[t][u]) {
+                    txt += `_${s}:_\n${relatorio[t][u][s].join('\n')}\n\n`;
+                }
+            }
+        }
+        document.getElementById('preview').innerText = txt;
+    }
+
+    function copiar() {
+        const texto = document.getElementById('preview').innerText;
+        if(texto.includes("Aguardando")) return notify("⚠️ Monitor vazio!");
+        navigator.clipboard.writeText(texto);
+        notify("📋 Copiado!");
+    }
+
+    function atualizarSetores() {
+        const uni = document.getElementById('unidade').value;
+        document.getElementById('setor').innerHTML = setoresPorUnidade[uni].map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+
+    // Horário automático ao carregar
+    const agora = new Date();
+    document.getElementById('horario').value = agora.getHours().toString().padStart(2, '0') + ":" + agora.getMinutes().toString().padStart(2, '0');
+
+    atualizarSetores();
+</script>
+</body>
+</html>
